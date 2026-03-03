@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chroma Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <aside class="sidebar card">
+      <h1>Chroma Explorer</h1>
+      <p class="muted">Minimal UI for browsing and querying local Chroma collections.</p>
+
+      <section>
+        <h2>Basic Inputs</h2>
+        <label>
+          <span>Chroma DB Path</span>
+          <input id="chromaDir" type="text" value="{{ default_chroma_dir }}" />
+        </label>
+        <button id="applyWorkspace" class="btn">Apply</button>
+        <label>
+          <span>Collection</span>
+          <select id="collectionSelect"></select>
+        </label>
+      </section>
+
+      <details class="advanced">
+        <summary>Advanced Inputs</summary>
+        <label>
+          <span>Metadata Key Scan Size</span>
+          <input id="sampleSize" type="number" min="10" max="1000" step="10" value="120" />
+        </label>
+        <label>
+          <span>Search Embedding Model</span>
+          <input id="searchEmbeddingModel" type="text" value="{{ default_embedding_model }}" />
+        </label>
+      </details>
+
+      <section class="health card-lite">
+        <div class="row-between">
+          <h2>Health</h2>
+          <button id="runHealth" class="btn ghost small">Check</button>
+        </div>
+        <div id="healthPanel" class="health-grid"></div>
+        <div id="healthError" class="panel-error hidden" role="alert"></div>
+      </section>
+
+      <div id="emptyState" class="empty-state hidden"></div>
+      <p id="status" class="status">Ready</p>
+    </aside>
+
+    <main class="content">
+      <section class="metrics">
+        <article class="card metric">
+          <p>Collection</p>
+          <h3 id="kpiCollection">-</h3>
+        </article>
+        <article class="card metric">
+          <p>Total Vectors</p>
+          <h3 id="kpiCount">0</h3>
+        </article>
+        <article class="card metric">
+          <p>Metadata Keys</p>
+          <h3 id="kpiKeys">0</h3>
+        </article>
+      </section>
+
+      <section class="tabs">
+        <button class="tab-btn active" data-tab="browse">Browse</button>
+        <button class="tab-btn" data-tab="search">Search</button>
+        <button class="tab-btn" data-tab="insights">Insights</button>
+      </section>
+
+      <section id="tab-browse" class="tab-panel active card">
+        <div class="panel-head">
+          <h2>Browse Records</h2>
+          <div class="inline-controls">
+            <label>
+              <span>Page Size</span>
+              <select id="pageSize">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <button id="prevPage" class="btn ghost">Prev</button>
+            <button id="nextPage" class="btn ghost">Next</button>
+            <button id="exportBrowseCsv" class="btn ghost">Export CSV</button>
+          </div>
+        </div>
+        <p id="browseRange" class="hint">Showing 0-0 of 0</p>
+        <div id="browseError" class="panel-error hidden" role="alert"></div>
+
+        <details class="advanced">
+          <summary>Advanced Browse Inputs</summary>
+          <label>
+            <span>ID Contains</span>
+            <input id="idContains" type="text" placeholder="optional filter" />
+          </label>
+          <label>
+            <span>Infinite Scroll</span>
+            <select id="infiniteScrollMode" aria-label="Infinite scroll mode">
+              <option value="off" selected>Off</option>
+              <option value="on">On</option>
+            </select>
+          </label>
+          <button id="clearFilters" class="btn ghost small" type="button">Clear Filters</button>
+        </details>
+
+        <div class="table-wrap">
+          <table class="records-table">
+            <thead>
+              <tr>
+                <th>Row</th>
+                <th>ID</th>
+                <th>Document Preview</th>
+                <th>Metadata Keys</th>
+              </tr>
+            </thead>
+            <tbody id="browseTableBody"></tbody>
+          </table>
+        </div>
+        <article id="browseDetail" class="detail hidden"></article>
+      </section>
+
+      <section id="tab-search" class="tab-panel card">
+        <h2>Semantic Search</h2>
+        <label>
+          <span>Query</span>
+          <input id="queryText" type="text" placeholder="Ask what you want to retrieve" />
+        </label>
+        <div class="row-wrap">
+          <button id="runSearch" class="btn">Search</button>
+          <button id="exportSearchCsv" class="btn ghost">Export CSV</button>
+          <button id="saveQuery" class="btn ghost">Save Query</button>
+          <select id="savedQueries"></select>
+          <button id="loadQuery" class="btn ghost">Load</button>
+          <button id="deleteQuery" class="btn ghost">Delete</button>
+        </div>
+        <div id="searchError" class="panel-error hidden" role="alert"></div>
+
+        <details class="advanced">
+          <summary>Advanced Search Inputs</summary>
+          <label>
+            <span>Top K</span>
+            <input id="topK" type="number" min="1" max="50" value="8" />
+          </label>
+          <label>
+            <span>Metadata Filter JSON</span>
+            <input id="whereJson" type="text" placeholder='{"source":"notes.md"}' />
+          </label>
+          <p id="whereValidation" class="hint">Optional JSON object filter. Example: {"source":"notes.md"}</p>
+        </details>
+
+        <div id="searchResults" class="list"></div>
+      </section>
+
+      <section id="tab-insights" class="tab-panel card">
+        <h2>Collection Insights</h2>
+        <div id="insightsError" class="panel-error hidden" role="alert"></div>
+        <h3>Detected Metadata Keys</h3>
+        <div id="metadataKeys" class="chips"></div>
+        <h3>Metadata Facets</h3>
+        <div id="metadataFacets" class="facets"></div>
+        <h3>Collection Metadata</h3>
+        <pre id="collectionMeta" class="code"></pre>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
