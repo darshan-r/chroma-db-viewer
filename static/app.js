@@ -238,6 +238,11 @@ async function getJsonWithTimeout(url, timeoutMs = 7000, options = {}) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await getJson(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error && (error.name === "AbortError" || String(error).toLowerCase().includes("aborted"))) {
+      throw new Error(`Request timed out after ${Math.floor(timeoutMs / 1000)}s`);
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -626,7 +631,12 @@ async function runHealthCheck(includeEmbeddingCheck = false) {
       showPanelError(el.healthError, payload.errors[0]);
     }
   } catch (error) {
-    showPanelError(el.healthError, error.message);
+    showPanelError(
+      el.healthError,
+      includeEmbeddingCheck
+        ? `Health check timed out. Try again or disable full embedding check. (${error.message})`
+        : `Quick health check timed out; app remains usable. (${error.message})`
+    );
     throw error;
   }
 }
