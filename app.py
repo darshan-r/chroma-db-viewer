@@ -2,7 +2,7 @@
 
 This module serves:
 - the single-page frontend (`/`)
-- JSON APIs for collection browsing/search/insights/health
+- JSON APIs for collection browsing/insights
 """
 
 from __future__ import annotations
@@ -13,34 +13,21 @@ from pathlib import Path
 from typing import Any
 
 from chromadb import PersistentClient
-from chromadb.utils import embedding_functions
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field
 
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_CHROMA_DIR = str(BASE_DIR / "chroma_db")
-DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 app = FastAPI(title="Chroma Explorer")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
-class SearchRequest(BaseModel):
-    """Payload for semantic search requests."""
-
-    chroma_dir: str = Field(default=DEFAULT_CHROMA_DIR)
-    query: str = Field(min_length=1)
-    top_k: int = Field(default=8, ge=1, le=50)
-    embedding_model: str = Field(default=DEFAULT_EMBEDDING_MODEL)
-    where_json: str = Field(default="")
-
-
-def _client(chroma_dir: str) -> PersistentClient:
+def _client(chroma_dir: str) -> Any:
     """Return a PersistentClient for the provided path or raise HTTP 400."""
     try:
         return PersistentClient(path=chroma_dir)
@@ -48,7 +35,7 @@ def _client(chroma_dir: str) -> PersistentClient:
         raise HTTPException(status_code=400, detail=f"Could not connect to '{chroma_dir}': {exc}") from exc
 
 
-def _collection_names(client: PersistentClient) -> list[str]:
+def _collection_names(client: Any) -> list[str]:
     """Return normalized collection names from a Chroma client."""
     names: list[str] = []
     for item in client.list_collections():
@@ -73,7 +60,7 @@ def _parse_where_json(where_json: str) -> dict[str, Any] | None:
 
 
 def _preview(text: str | None, max_len: int = 160) -> str:
-    """Return compact text preview used in browse/search list cards."""
+    """Return compact text preview used in browse list cards."""
     if not text:
         return ""
     compact = " ".join(text.split())
@@ -153,7 +140,6 @@ def index(request: Request) -> Any:
         {
             "request": request,
             "default_chroma_dir": DEFAULT_CHROMA_DIR,
-            "default_embedding_model": DEFAULT_EMBEDDING_MODEL,
         },
     )
 
@@ -228,47 +214,6 @@ def browse(
     return {"total": total, "limit": limit, "offset": offset, "items": items, "where": where}
 
 
-@app.post("/api/collections/{collection_name}/search")
-def search(collection_name: str, payload: SearchRequest) -> dict[str, Any]:
-    """Run semantic search against a collection and return ranked matches."""
-    client = _client(payload.chroma_dir)
-    where = _parse_where_json(payload.where_json)
-
-    try:
-        embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=payload.embedding_model
-        )
-        collection = client.get_collection(collection_name, embedding_function=embedder)
-        result = collection.query(
-            query_texts=[payload.query],
-            n_results=payload.top_k,
-            where=where,
-            include=["distances", "documents", "metadatas"],
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Search failed: {exc}") from exc
-
-    ids = result.get("ids", [[]])[0]
-    docs = result.get("documents", [[]])[0]
-    metas = result.get("metadatas", [[]])[0]
-    dists = result.get("distances", [[]])[0]
-
-    matches: list[dict[str, Any]] = []
-    for idx, item_id in enumerate(ids):
-        matches.append(
-            {
-                "rank": idx + 1,
-                "id": item_id,
-                "distance": dists[idx] if idx < len(dists) else None,
-                "document": docs[idx] if idx < len(docs) else "",
-                "document_preview": _preview(docs[idx] if idx < len(docs) else ""),
-                "metadata": metas[idx] if idx < len(metas) else {},
-            }
-        )
-
-    return {"matches": matches}
-
-
 @app.get("/api/collections/{collection_name}/insights")
 def insights(
     collection_name: str,
@@ -294,64 +239,8 @@ def insights(
     }
 
 
-@app.get("/api/health")
-def health(
-    chroma_dir: str = Query(default=DEFAULT_CHROMA_DIR),
-    collection_name: str = Query(default=""),
-    embedding_model: str = Query(default=DEFAULT_EMBEDDING_MODEL),
-    include_embedding_check: bool = Query(default=False),
-) -> dict[str, Any]:
-    """Run health diagnostics for path, collection, and optional embedding compatibility."""
-    checks: dict[str, Any] = {
-        "path_exists": False,
-        "db_file_exists": False,
-        "db_connectable": False,
-        "collections_count": 0,
-        "collection_accessible": None,
-        "embedding_model_loadable": None,
-        "query_compatible": None,
-        "errors": [],
-    }
 
-    path = Path(chroma_dir)
-    checks["path_exists"] = path.exists()
-    checks["db_file_exists"] = (path / "chroma.sqlite3").exists()
 
-    try:
-        client = _client(chroma_dir)
-        checks["db_connectable"] = True
-        collections = _collection_names(client)
-        checks["collections_count"] = len(collections)
-    except HTTPException as exc:
-        checks["errors"].append(str(exc.detail))
-        return checks
 
-    embedder = None
-    if include_embedding_check:
-        try:
-            embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
-                model_name=embedding_model
-            )
-            checks["embedding_model_loadable"] = True
-        except Exception as exc:
-            checks["embedding_model_loadable"] = False
-            checks["errors"].append(f"Embedding model issue: {exc}")
 
-    if collection_name.strip():
-        try:
-            if embedder is not None:
-                collection = client.get_collection(collection_name, embedding_function=embedder)
-            else:
-                collection = client.get_collection(collection_name)
-            checks["collection_accessible"] = True
-            if include_embedding_check and embedder is not None and collection.count() > 0:
-                collection.query(query_texts=["health check"], n_results=1)
-                checks["query_compatible"] = True
-            elif include_embedding_check and embedder is not None:
-                checks["query_compatible"] = True
-        except Exception as exc:
-            checks["collection_accessible"] = False
-            checks["query_compatible"] = False
-            checks["errors"].append(f"Collection/query check failed: {exc}")
 
-    return checks

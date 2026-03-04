@@ -3,7 +3,7 @@
 ## Overview
 
 Chroma Explorer is a thin web app with:
-- FastAPI backend for data access and diagnostics
+- FastAPI backend for data access
 - static HTML/CSS/JS frontend for interaction and rendering
 - local ChromaDB storage as system of record
 
@@ -12,9 +12,7 @@ Chroma Explorer is a thin web app with:
 `app.py` exposes endpoints for:
 - listing collections
 - browsing paged records
-- semantic search
 - metadata insights/facets
-- runtime health checks
 
 The backend intentionally avoids long-lived state; frontend handles interaction state and lightweight caching.
 
@@ -23,7 +21,7 @@ The backend intentionally avoids long-lived state; frontend handles interaction 
 `static/app.js` handles:
 - workspace and URL state synchronization
 - panel-level error reporting
-- browse/search UX
+- browse UX
 - CSV export
 - infinite scroll mode
 - short-lived request cache
@@ -34,9 +32,8 @@ The backend intentionally avoids long-lived state; frontend handles interaction 
 
 ## Performance Design
 
-- Health checks are non-blocking by default.
 - Request cache is TTL-based and local to browser session.
-- Browse/search render skeleton placeholders while loading.
+- Browse views render skeleton placeholders while loading.
 - Facet generation is sample-based, not full-scan.
 
 ## Extension Points
@@ -44,3 +41,6 @@ The backend intentionally avoids long-lived state; frontend handles interaction 
 - Add authentication middleware before deploying publicly.
 - Add server-side export endpoints for full-result exports.
 - Add test suite for endpoint regression protection.
+
+
+

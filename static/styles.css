@@ -479,21 +479,6 @@ button:focus-visible,
   border-color: #14b8a6;
 }
 
-.health-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
-  font-size: 0.82rem;
-}
-
-.health-cell {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.35rem 0.45rem;
-  background: #fff;
-}
-
 .ok {
   color: #166534;
 }
@@ -524,11 +509,6 @@ button:focus-visible,
   .metrics {
     grid-template-columns: 1fr;
   }
-
-  .health-grid {
-    grid-template-columns: 1fr;
-  }
-
   .panel-head {
     flex-direction: column;
     align-items: stretch;
@@ -538,3 +518,6 @@ button:focus-visible,
     flex-wrap: wrap;
   }
 }
+
+
+

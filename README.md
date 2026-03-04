@@ -7,33 +7,26 @@ Modern, local-first web application to explore ChromaDB collections with a clean
 Working directly with Chroma collections can be awkward when you need quick visibility into:
 - what data actually exists,
 - which metadata keys/values are available,
-- whether semantic search is configured correctly.
+- whether your collection metadata and records look correct.
 
-Chroma Explorer provides a lightweight interface to browse, inspect, and search your local vector store without adding a heavy frontend framework.
+Chroma Explorer provides a lightweight interface to browse, inspect, and explore your local vector store without adding a heavy frontend framework.
 
 ## Core Features
 
 - Collection discovery and quick path switching for local `chroma_db` directories
 - Browse records with pagination or optional infinite scroll
 - Record drilldown with full document and metadata
-- Semantic search with optional metadata JSON filter
 - Metadata insights:
   - detected keys
   - facet values with one-click filter application
-- Health diagnostics:
-  - DB path/file/connectivity
-  - collection accessibility
-  - optional embedding/query compatibility
-- Saved query presets (browser local storage)
-- URL-shareable app state (path, collection, tab, filters, query)
-- CSV export for browse and search results
+- URL-shareable app state (path, collection, tab, filters)
+- CSV export for browse results
 
 ## Tech Stack
 
 - Backend: FastAPI
 - Frontend: HTML/CSS/JavaScript (no framework)
 - Vector DB: ChromaDB
-- Embeddings for semantic search: sentence-transformers
 - Runtime and dependency management: `uv`
 
 ## Quickstart (UV)
@@ -77,9 +70,7 @@ If the path has no collections, the app shows detected candidate paths you can s
 - `GET /api/collections`
 - `GET /api/discover`
 - `GET /api/collections/{collection_name}/browse`
-- `POST /api/collections/{collection_name}/search`
 - `GET /api/collections/{collection_name}/insights`
-- `GET /api/health`
 
 Interactive API docs are available at:
 - `http://127.0.0.1:8000/docs`
@@ -125,3 +116,10 @@ uv run pytest -q
 ## License
 
 MIT. See [LICENSE](./LICENSE).
+
+
+
+
+
+
+
