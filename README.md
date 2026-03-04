@@ -1,4 +1,4 @@
-# Chroma Explorer
+# Chroma DB Viewer
 
 Modern, local-first web application to explore ChromaDB collections with a clean FastAPI + vanilla frontend stack.
 
@@ -116,6 +116,7 @@ uv run pytest -q
 ## License
 
 MIT. See [LICENSE](./LICENSE).
+
 
 
 
